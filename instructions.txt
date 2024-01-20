@@ -1,0 +1,3 @@
+roslaunch ldlidar_sl_ros viewer_ld14p_noetic.launch
+rosbag record pointcloud2d
+rosbag filter --print="'%d.%d, %s' % (t.secs % 100, t.nsecs, [(m.points[i].x, m.points[i].y) for i in range(len(m.points)) if (m.points[i].x != 0 or m.points[i].y != 0)])" 2024-01-19-18-27-20.bag new.bag "topic=='pointcloud2d'"
