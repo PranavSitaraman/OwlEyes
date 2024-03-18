@@ -220,83 +220,82 @@ while True:
     else:
         byte = ser.read()[0]
     
-    match state:
-        case STATE.HEADER:
-            if byte == HEADER_BYTE:
-                tmp.append(byte)
-                state = STATE.VER_LEN
-        case STATE.VER_LEN:
-            if byte == VER_BYTE:
-                tmp.append(byte)
-                state = STATE.DATA
-            else:
-                tmp = []
-                state = STATE.HEADER
-        case STATE.DATA:
+    if state == STATE.HEADER:
+        if byte == HEADER_BYTE:
             tmp.append(byte)
-            if len(tmp) == 47:
-                crc = CalCRC8(tmp, len(tmp) - 1)
-                if crc != tmp[len(tmp) - 1]:
-                    tmp = []
-                    state = STATE.HEADER
-                    continue
-                last_angle = 0
-                speed = 256 * tmp[3] + tmp[2]
-                start_angle = 256 * tmp[5] + tmp[4]
-                points = []
-                for i in range(12):
-                    points.append([256 * tmp[7 + 3 * i] + tmp[6 + 3 * i], tmp[8 + 3 * i], 0])
-                end_angle = 256 * tmp[43] + tmp[42]
-                timestamp = 256 * tmp[45] + tmp[44]
+            state = STATE.VER_LEN
+    elif state == STATE.VER_LEN:
+        if byte == VER_BYTE:
+            tmp.append(byte)
+            state = STATE.DATA
+        else:
+            tmp = []
+            state = STATE.HEADER
+    elif state == STATE.DATA:
+        tmp.append(byte)
+        if len(tmp) == 47:
+            crc = CalCRC8(tmp, len(tmp) - 1)
+            if crc != tmp[len(tmp) - 1]:
                 tmp = []
                 state = STATE.HEADER
-                diff = (end_angle / 100 - start_angle / 100 + 360) % 360
-                if prev_timestamp == 0:
-                    prev_timestamp = timestamp
-                    continue
-                time_step = (timestamp - prev_timestamp)/11
-                angle_step = diff/11
-                start = start_angle/100
-                for i in range(12):
-                    points[i][POINT.ANGLE] = start + i * angle_step
-                    points[i][POINT.ANGLE] = (points[i][POINT.ANGLE] + 360) % 360
-                    frame.append(points[i])
+                continue
+            last_angle = 0
+            speed = 256 * tmp[3] + tmp[2]
+            start_angle = 256 * tmp[5] + tmp[4]
+            points = []
+            for i in range(12):
+                points.append([256 * tmp[7 + 3 * i] + tmp[6 + 3 * i], tmp[8 + 3 * i], 0])
+            end_angle = 256 * tmp[43] + tmp[42]
+            timestamp = 256 * tmp[45] + tmp[44]
+            tmp = []
+            state = STATE.HEADER
+            diff = (end_angle / 100 - start_angle / 100 + 360) % 360
+            if prev_timestamp == 0:
                 prev_timestamp = timestamp
-                if speed < 0:
+                continue
+            time_step = (timestamp - prev_timestamp)/11
+            angle_step = diff/11
+            start = start_angle/100
+            for i in range(12):
+                points[i][POINT.ANGLE] = start + i * angle_step
+                points[i][POINT.ANGLE] = (points[i][POINT.ANGLE] + 360) % 360
+                frame.append(points[i])
+            prev_timestamp = timestamp
+            if speed < 0:
+                continue
+            for i in range(len(frame)):
+                if frame[i][POINT.ANGLE] > 20 or last_angle < 340:
+                    last_angle = frame[i][POINT.ANGLE]
                     continue
-                for i in range(len(frame)):
-                    if frame[i][POINT.ANGLE] > 20 or last_angle < 340:
-                        last_angle = frame[i][POINT.ANGLE]
-                        continue
-                    copy_frame = frame[:i + 1]
-                    for n in copy_frame:
-                        angle = 0
-                        if n[POINT.DISTANCE] > 0:
-                            x = n[POINT.DISTANCE] + 5.9
-                            y = n[POINT.DISTANCE] * 0.11923 - 18.975571
-                            shift = math.atan(y / x) * 180 / math.pi
-                            angle = n[POINT.ANGLE] - shift
-                            last_shift_delta = shift
-                        else:
-                            angle = n[POINT.ANGLE] - last_shift_delta
-                        angle = (angle + 360) % 360
-                        n[POINT.ANGLE] = angle
-                        if n[POINT.DISTANCE] == 0:
-                            n[POINT.INTENSITY] = 0
-                    frame = frame[i + 1:]
-                    if first:
-                        first = False
-                        break
-                    final_frame = []
-                    for i in copy_frame:
-                        i[POINT.ANGLE] = (810 - i[POINT.ANGLE]) % 360
-                        i[POINT.DISTANCE] /= 1000
-                        x = i[POINT.DISTANCE] * math.cos(math.radians(i[POINT.ANGLE]))
-                        y = i[POINT.DISTANCE] * math.sin(math.radians(i[POINT.ANGLE]))
-                        if x != 0 or y != 0:
-                            final_frame.append((x, y))
-                    algorithm(final_frame)
+                copy_frame = frame[:i + 1]
+                for n in copy_frame:
+                    angle = 0
+                    if n[POINT.DISTANCE] > 0:
+                        x = n[POINT.DISTANCE] + 5.9
+                        y = n[POINT.DISTANCE] * 0.11923 - 18.975571
+                        shift = math.atan(y / x) * 180 / math.pi
+                        angle = n[POINT.ANGLE] - shift
+                        last_shift_delta = shift
+                    else:
+                        angle = n[POINT.ANGLE] - last_shift_delta
+                    angle = (angle + 360) % 360
+                    n[POINT.ANGLE] = angle
+                    if n[POINT.DISTANCE] == 0:
+                        n[POINT.INTENSITY] = 0
+                frame = frame[i + 1:]
+                if first:
+                    first = False
                     break
+                final_frame = []
+                for i in copy_frame:
+                    i[POINT.ANGLE] = (810 - i[POINT.ANGLE]) % 360
+                    i[POINT.DISTANCE] /= 1000
+                    x = i[POINT.DISTANCE] * math.cos(math.radians(i[POINT.ANGLE]))
+                    y = i[POINT.DISTANCE] * math.sin(math.radians(i[POINT.ANGLE]))
+                    if x != 0 or y != 0:
+                        final_frame.append((x, y))
+                algorithm(final_frame)
+                break
 
 if DEBUG:
     print(movements)
