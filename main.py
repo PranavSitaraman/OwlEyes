@@ -1,23 +1,4 @@
-# import RPi.GPIO as GPIO
-# import serial
-# import time
-# GPIO.setmode(GPIO.BOARD)
-# GPIO.setup(18, GPIO.OUT)
-# GPIO.output(18, GPIO.HIGH)
-# ser = serial.Serial(
-#     port="/dev/ttyAMA0",
-#     baudrate=230400,
-#     parity=serial.PARITY_NONE,
-#     stopbits=serial.STOPBITS_ONE,
-#     bytesize=serial.EIGHTBITS,
-#     timeout=1,
-# )
-# start = time.time()
-# while time.time() < start + 5:
-#     read_byte = ser.read()
-#     print("0x" + read_byte.hex() + ", ", end=" ")
-# GPIO.output(18, GPIO.LOW)
-# GPIO.cleanup()
+DEBUG = False
 
 import math
 import time
@@ -25,6 +6,10 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import numpy as np
 from enum import Enum, IntEnum
+
+if not DEBUG:
+    import RPi.GPIO as GPIO
+    import serial
 
 CrcTable = [
     0x00, 0x4d, 0x9a, 0xd7, 0x79, 0x34, 0xe3, 0xae, 0xf2, 0xbf, 0x68, 0x25,
@@ -56,34 +41,6 @@ def CalCRC8(data, len):
         crc = CrcTable[(crc ^ data[i]) & 0xff]
     return crc
 
-STATE = Enum('STATE',['HEADER', 'VER_LEN','DATA'])
-POINT = IntEnum('POINT',['DISTANCE', 'INTENSITY', 'ANGLE', 'TIME'], start=0)
-
-DATA_LENGTH = 30
-MAX_SEGMENTS = 20
-
-GRID_SIZE = 50
-COMPONENT_THRESH = 5
-MAX_RANGE = 5
-NUM_ITERATIONS = 10
-MAX_DISPLACEMENT = 3
-INTERPOLATION_DIST = 0.05
-VEL_THRESH = 0.1
-HEADER_BYTE = 0x54
-VER_BYTE = 0x2C
-
-RAW_VEL = [(0, 0)] * DATA_LENGTH
-RAW_DATA = [int(i, 16) for i in open("data.txt", "r").read().replace(' ', '').split(',')]
-START_TIME = time.time()
-
-figure, axis = plt.subplots(math.ceil(DATA_LENGTH / 4), 4, figsize=(12, 21))
-color_options = cm.rainbow(np.linspace(0, 1, MAX_SEGMENTS))
-current_frame = []
-prev_frame = []
-prev_vel = []
-frame_count = 0
-movements = []
-
 def LagrangeInterpolate(pointList, x):
     sum = 0
     for j in range(len(pointList)):
@@ -93,6 +50,34 @@ def LagrangeInterpolate(pointList, x):
                 value *= (x - pointList[k][0]) / (pointList[j][0] - pointList[k][0])
         sum += pointList[j][1] * value
     return sum
+
+STATE = Enum('STATE',['HEADER', 'VER_LEN','DATA'])
+POINT = IntEnum('POINT',['DISTANCE', 'INTENSITY', 'ANGLE', 'TIME'], start=0)
+
+GRID_SIZE = 30
+COMPONENT_THRESH = 5
+MAX_RANGE = 3
+NUM_ITERATIONS = 10
+MAX_DISPLACEMENT = 3
+INTERPOLATION_DIST = 0.05
+VEL_THRESH = 0.1
+HEADER_BYTE = 0x54
+VER_BYTE = 0x2C
+START_TIME = time.time()
+
+if DEBUG:
+    DATA_LENGTH = 30
+    MAX_SEGMENTS = 40
+    RAW_VEL = [(0, 0)] * DATA_LENGTH
+    RAW_DATA = [int(i, 16) for i in open("data.txt", "r").read().replace(' ', '').split(',')[:-1]]
+    figure, axis = plt.subplots(math.ceil(DATA_LENGTH / 4), 4, figsize=(14, 24))
+    color_options = cm.rainbow(np.linspace(0, 1, MAX_SEGMENTS))
+
+current_frame = []
+prev_frame = []
+prev_vel = []
+frame_count = 0
+movements = []
 
 def algorithm(frame):
     global frame_count
@@ -155,12 +140,15 @@ def algorithm(frame):
         for i in new:
             current_frame[i[2] + 1][0] = new_max
             new_max += 1
-    axis[frame_count // 4, frame_count % 4].scatter(current_frame[1][3], current_frame[1][4], color='white')
-    for i in range(2, len(current_frame)):
-        axis[frame_count // 4, frame_count % 4].scatter(current_frame[i][3], current_frame[i][4], color=color_options[current_frame[i][0] - 1], s=5, label=current_frame[i][0])
-        axis[frame_count // 4, frame_count % 4].scatter(current_frame[i][1], current_frame[i][2], color='black', marker='*')
-    axis[frame_count // 4, frame_count % 4].scatter(0, 0, color='red', marker='x')
-    axis[frame_count // 4, frame_count % 4].arrow(0, 0, RAW_VEL[frame_count][0], RAW_VEL[frame_count][1], color='red', width=0.01, head_width=0.07)
+    
+    if DEBUG:
+        axis[frame_count // 4, frame_count % 4].scatter(current_frame[1][3], current_frame[1][4], color='white')
+        for i in range(2, len(current_frame)):
+            axis[frame_count // 4, frame_count % 4].scatter(current_frame[i][3], current_frame[i][4], color=color_options[current_frame[i][0] - 1], s=5, label=current_frame[i][0])
+            axis[frame_count // 4, frame_count % 4].scatter(current_frame[i][1], current_frame[i][2], color='black', marker='*')
+        axis[frame_count // 4, frame_count % 4].scatter(0, 0, color='red', marker='x')
+        axis[frame_count // 4, frame_count % 4].arrow(0, 0, RAW_VEL[frame_count][0], RAW_VEL[frame_count][1], color='red', width=0.01, head_width=0.07)
+    
     movements.append([current_frame[0]])
     if len(prev_frame) == 3:
         current_vel = []
@@ -173,7 +161,10 @@ def algorithm(frame):
                 v_y = (LagrangeInterpolate(points_y, points_y[3][0] + INTERPOLATION_DIST) - LagrangeInterpolate(points_y, points_y[0][0] - INTERPOLATION_DIST))/(points_y[3][0] - points_y[0][0] + 2 * INTERPOLATION_DIST)
                 v_x += RAW_VEL[frame_count][0]
                 v_y += RAW_VEL[frame_count][1]
-                axis[frame_count // 4, frame_count % 4].arrow(points_x[3][1], points_y[3][1], v_x, v_y, color='black', width=0.01, head_width=0.07)
+                
+                if DEBUG:
+                    axis[frame_count // 4, frame_count % 4].arrow(points_x[3][1], points_y[3][1], v_x, v_y, color='black', width=0.01, head_width=0.07)
+                
                 current_vel.append((i[0], v_x, v_y))
                 if len(prev_vel) == 3:
                     if i[0] in [j[0] for j in prev_vel[0]] and i[0] in [j[0] for j in prev_vel[1]] and i[0] in [j[0] for j in prev_vel[2]]:
@@ -187,10 +178,13 @@ def algorithm(frame):
                             movements[len(movements) - 1].append((i[0], round((v_x ** 2 + v_y ** 2) ** 0.5, 2),  round((math.degrees(math.atan2(v_y, v_x)) + 360) % 360)))
                             print(f'Time {round(current_frame[0], 2)} s, object {i[0]} moving at {round((v_x ** 2 + v_y ** 2) ** 0.5, 2)} m/s toward {round((math.degrees(math.atan2(v_y, v_x)) + 360) % 360)}°')
         prev_vel = [current_vel] + prev_vel[:2]
-    axis[frame_count // 4, frame_count % 4].set_xlim(-MAX_RANGE, MAX_RANGE)
-    axis[frame_count // 4, frame_count % 4].set_ylim(-MAX_RANGE, MAX_RANGE)
-    axis[frame_count // 4, frame_count % 4].set_title(f'Time: {round(current_frame[0], 2)} s')
-    axis[frame_count // 4, frame_count % 4].legend()
+
+    if DEBUG:
+        axis[frame_count // 4, frame_count % 4].set_xlim(-MAX_RANGE, MAX_RANGE)
+        axis[frame_count // 4, frame_count % 4].set_ylim(-MAX_RANGE, MAX_RANGE)
+        axis[frame_count // 4, frame_count % 4].set_title(f'Time: {round(current_frame[0], 2)} s')
+        axis[frame_count // 4, frame_count % 4].legend()
+
     prev_frame = [[current_frame[0]] + [i[:3] for i in current_frame[1:]]] + prev_frame[:2]
     frame_count += 1
 
@@ -200,7 +194,31 @@ prev_timestamp = 0
 last_shift_delta = 0
 first = True
 state = STATE.HEADER
-for byte in RAW_DATA:
+byte_counter = 0
+
+if not DEBUG:
+    GPIO.setmode(GPIO.BOARD)
+    GPIO.setup(18, GPIO.OUT)
+    GPIO.output(18, GPIO.HIGH)
+    ser = serial.Serial(
+        port="/dev/ttyAMA0",
+        baudrate=230400,
+        parity=serial.PARITY_NONE,
+        stopbits=serial.STOPBITS_ONE,
+        bytesize=serial.EIGHTBITS,
+        timeout=1,
+    )
+
+while True:
+
+    if DEBUG:
+        if byte_counter == len(RAW_DATA):
+            break
+        byte = RAW_DATA[byte_counter]
+        byte_counter += 1
+    else:
+        byte = ser.read()[0]
+    
     match state:
         case STATE.HEADER:
             if byte == HEADER_BYTE:
@@ -270,7 +288,7 @@ for byte in RAW_DATA:
                         break
                     final_frame = []
                     for i in copy_frame:
-                        # i[POINT.ANGLE] = (720 - i[POINT.ANGLE]) % 360
+                        i[POINT.ANGLE] = (810 - i[POINT.ANGLE]) % 360
                         i[POINT.DISTANCE] /= 1000
                         x = i[POINT.DISTANCE] * math.cos(math.radians(i[POINT.ANGLE]))
                         y = i[POINT.DISTANCE] * math.sin(math.radians(i[POINT.ANGLE]))
@@ -278,6 +296,8 @@ for byte in RAW_DATA:
                             final_frame.append((x, y))
                     algorithm(final_frame)
                     break
-print(movements)
-plt.tight_layout()
-plt.savefig('main.png')
+
+if DEBUG:
+    print(movements)
+    plt.tight_layout()
+    plt.savefig('main.png')
