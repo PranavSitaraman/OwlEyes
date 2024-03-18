@@ -195,6 +195,7 @@ last_shift_delta = 0
 first = True
 state = STATE.HEADER
 byte_counter = 0
+byte = 0
 
 if not DEBUG:
     GPIO.setmode(GPIO.BOARD)
