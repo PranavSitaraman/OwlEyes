@@ -218,7 +218,10 @@ while True:
         byte = RAW_DATA[byte_counter]
         byte_counter += 1
     else:
-        byte = ser.read()[0]
+	byte_read = ser.read()
+	if len(byte_read) == 0:
+		continue
+	byte = byte_read[0]
     
     if state == STATE.HEADER:
         if byte == HEADER_BYTE:
