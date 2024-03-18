@@ -159,11 +159,14 @@ def algorithm(frame):
                 points_y.sort()
                 v_x = (LagrangeInterpolate(points_x, points_x[3][0] + INTERPOLATION_DIST) - LagrangeInterpolate(points_x, points_x[0][0] - INTERPOLATION_DIST))/(points_x[3][0] - points_x[0][0] + 2 * INTERPOLATION_DIST)
                 v_y = (LagrangeInterpolate(points_y, points_y[3][0] + INTERPOLATION_DIST) - LagrangeInterpolate(points_y, points_y[0][0] - INTERPOLATION_DIST))/(points_y[3][0] - points_y[0][0] + 2 * INTERPOLATION_DIST)
-                v_x += RAW_VEL[frame_count][0]
-                v_y += RAW_VEL[frame_count][1]
                 
                 if DEBUG:
+                    v_x += RAW_VEL[frame_count][0]
+                    v_y += RAW_VEL[frame_count][1]
                     axis[frame_count // 4, frame_count % 4].arrow(points_x[3][1], points_y[3][1], v_x, v_y, color='black', width=0.01, head_width=0.07)
+                else:
+                    v_x += 0
+                    v_y += 0
                 
                 current_vel.append((i[0], v_x, v_y))
                 if len(prev_vel) == 3:
