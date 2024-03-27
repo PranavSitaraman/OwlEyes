@@ -41,7 +41,7 @@ while True:
     a /= 16
     b /= 16
     c /= 16
-    vel_x = 0.01 * x/math.cos(math.pi/180 * a)
-    vel_y = 0.01 * y/math.cos(math.pi/180 * b)
-    print(vel_x, vel_y)
+    vel_x = 0.01 * x/(math.cos(math.pi/180 * a) + 0.0001)
+    vel_y = 0.01 * y/(math.cos(math.pi/180 * b) + 0.0001)
+    print(round(vel_x, 2), round(vel_y, 2))
     time.sleep(0.01)
