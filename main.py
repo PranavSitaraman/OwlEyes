@@ -10,6 +10,7 @@ from enum import Enum, IntEnum
 if not DEBUG:
     import RPi.GPIO as GPIO
     import serial
+    from adafruit_extended_bus import ExtendedI2C as I2C
 
 CrcTable = [
     0x00, 0x4d, 0x9a, 0xd7, 0x79, 0x34, 0xe3, 0xae, 0xf2, 0xbf, 0x68, 0x25,
