@@ -61,7 +61,7 @@ MAX_RANGE = 3
 NUM_ITERATIONS = 10
 MAX_DISPLACEMENT = 3
 INTERPOLATION_DIST = 0.05
-VEL_THRESH = 0.1
+VEL_THRESH = 0.5
 HEADER_BYTE = 0x54
 VER_BYTE = 0x2C
 START_TIME = time.time()
@@ -201,8 +201,8 @@ def algorithm(frame):
                     v_y += RAW_VEL[frame_count][1]
                     axis[frame_count // 4, frame_count % 4].arrow(points_x[3][1], points_y[3][1], v_x, v_y, color='black', width=0.01, head_width=0.07)
                 else:
-                    v_x += -vel_y
-                    v_y += -vel_x
+                    v_x += vel_y
+                    v_y += vel_x
                 
                 current_vel.append((i[0], v_x, v_y))
                 if len(prev_vel) == 3:
