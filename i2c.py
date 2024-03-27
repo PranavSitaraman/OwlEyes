@@ -13,35 +13,37 @@ i2c.writeto(address, bytes([0X3F, 0]))
 time.sleep(1)
 i2c.writeto(address, bytes([0X3D, 0X0C]))
 time.sleep(1)
+v_x = 0
+v_y = 0
+cur_x = 0
+cur_y = 0
+buffer = [0] * 6
+start = time.time()
+count = 0
 while True:
-    buffer = [0] * 6
     i2c.writeto_then_readfrom(address, bytes([0X28]), buffer)
     x = ((buffer[0]) | ((buffer[1]) << 8))
     y = ((buffer[2]) | ((buffer[3]) << 8))
-    z = ((buffer[4]) | ((buffer[5]) << 8))
     if x > 32767:
         x -= 65536
     if y > 32767:
         y -= 65536
-    if z > 32767:
-        z -= 65536
     x /= 100
     y /= 100
-    z /= 100
-    i2c.writeto_then_readfrom(address, bytes([0X1A]), buffer)
-    a = ((buffer[0]) | ((buffer[1]) << 8))
-    b = ((buffer[2]) | ((buffer[3]) << 8))
-    c = ((buffer[4]) | ((buffer[5]) << 8))
-    if a > 32767:
-        a -= 65536
-    if b > 32767:
-        b -= 65536
-    if c > 32767:
-        c -= 65536
-    a /= 16
-    b /= 16
-    c /= 16
-    vel_x = 0.01 * x/(math.cos(math.pi/180 * a) + 0.0001)
-    vel_y = 0.01 * y/(math.cos(math.pi/180 * b) + 0.0001)
-    print(round(vel_x, 2), round(vel_y, 2))
-    time.sleep(0.01)
+    cur_x += x
+    cur_y += y
+    count += 1
+    v_x *= 0.95
+    v_y *= 0.95
+    if time.time() - start > 1/6 - 0.02:
+        cur_x /= count
+        cur_y /= count
+        if abs(cur_x) > 0.25:
+            v_x += 1/6 * cur_x
+        if abs(cur_y) > 0.25:
+            v_y += 1/6 * cur_y
+        cur_x = 0
+        cur_y = 0
+        count = 0
+        print(round(v_x, 2), round(v_y, 2))
+        start = time.time()
