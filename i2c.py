@@ -29,8 +29,8 @@ while True:
     y /= 100
     vel_x *= 0.7
     vel_y *= 0.7
-    if abs(x) > 0.2:
+    if abs(x) > 0.5:
         vel_x += 1/6 * x
-    if abs(y) > 0.2:
+    if abs(y) > 0.5:
         vel_y += 1/6 * y
     print(round(vel_x, 2), round(vel_y, 2))
