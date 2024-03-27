@@ -73,6 +73,22 @@ if DEBUG:
     RAW_DATA = [int(i, 16) for i in open("data.txt", "r").read().replace(' ', '').split(',')[:-1]]
     figure, axis = plt.subplots(math.ceil(DATA_LENGTH / 4), 4, figsize=(14, 24))
     color_options = cm.rainbow(np.linspace(0, 1, MAX_SEGMENTS))
+else:
+    i2c = I2C(1)
+    address = 0x28
+    i2c.writeto(address, bytes([0X3D, 0X00]))
+    i2c.writeto(address, bytes([0X3F, 0x20]))
+    time.sleep(1)
+    i2c.writeto(address, bytes([0X3E, 0X00]))
+    time.sleep(1)
+    i2c.writeto(address, bytes([0X07, 0]))
+    i2c.writeto(address, bytes([0X3F, 0]))
+    time.sleep(1)
+    i2c.writeto(address, bytes([0X3D, 0X0C]))
+    time.sleep(1)
+    vel_x = 0
+    vel_y = 0
+    buffer = [0] * 6
 
 current_frame = []
 prev_frame = []
@@ -88,6 +104,25 @@ def algorithm(frame):
     global current_frame
     global color_options
     global axis
+    global buffer
+    global vel_x
+    global vel_y
+    if not DEBUG:
+        i2c.writeto_then_readfrom(address, bytes([0X28]), buffer)
+        x = ((buffer[0]) | ((buffer[1]) << 8))
+        y = ((buffer[2]) | ((buffer[3]) << 8))
+        if x > 32767:
+            x -= 65536
+        if y > 32767:
+            y -= 65536
+        x /= 100
+        y /= 100
+        vel_x *= 0.7
+        vel_y *= 0.7
+        if abs(x) > 0.5:
+            vel_x += 1/6 * x
+        if abs(y) > 0.5:
+            vel_y += 1/6 * y
     current_frame = [time.time() - START_TIME, [0, 0, 0, [], []]]
     points = [[i[0], i[1]] for i in frame if abs(i[0]) < MAX_RANGE and abs(i[1]) < MAX_RANGE]
     grid = [[0 for i in range(GRID_SIZE)] for j in range(GRID_SIZE)]
@@ -166,8 +201,8 @@ def algorithm(frame):
                     v_y += RAW_VEL[frame_count][1]
                     axis[frame_count // 4, frame_count % 4].arrow(points_x[3][1], points_y[3][1], v_x, v_y, color='black', width=0.01, head_width=0.07)
                 else:
-                    v_x += 0
-                    v_y += 0
+                    v_x += -vel_y
+                    v_y += -vel_x
                 
                 current_vel.append((i[0], v_x, v_y))
                 if len(prev_vel) == 3:
