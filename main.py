@@ -6,6 +6,31 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import numpy as np
 from enum import Enum, IntEnum
+import threading
+import queue
+import pyttsx3
+
+class TTSThread(threading.Thread):
+    def __init__(self, queue):
+        threading.Thread.__init__(self)
+        self.queue = queue
+        self.daemon = True
+        self.start()
+
+    def run(self):
+        tts_engine = pyttsx3.init()
+        tts_engine.setProperty('rate', 250)
+        tts_engine.startLoop(False)
+        t_running = True
+        while t_running:
+            if self.queue.empty():
+                tts_engine.iterate()
+            else:
+                data = self.queue.get()
+                tts_engine.say(data)
+                while not self.queue.empty():
+                    self.queue.get()
+        tts_engine.endLoop()
 
 if not DEBUG:
     import RPi.GPIO as GPIO
@@ -52,6 +77,9 @@ def LagrangeInterpolate(pointList, x):
         sum += pointList[j][1] * value
     return sum
 
+tts_queue = queue.Queue()
+tts_thread = TTSThread(tts_queue)
+
 STATE = Enum('STATE',['HEADER', 'VER_LEN','DATA'])
 POINT = IntEnum('POINT',['DISTANCE', 'INTENSITY', 'ANGLE', 'TIME'], start=0)
 
@@ -94,11 +122,9 @@ current_frame = []
 prev_frame = []
 prev_vel = []
 frame_count = 0
-movements = []
 
 def algorithm(frame):
     global frame_count
-    global movements
     global prev_vel
     global prev_frame
     global current_frame
@@ -185,7 +211,6 @@ def algorithm(frame):
         axis[frame_count // 4, frame_count % 4].scatter(0, 0, color='red', marker='x')
         axis[frame_count // 4, frame_count % 4].arrow(0, 0, RAW_VEL[frame_count][0], RAW_VEL[frame_count][1], color='red', width=0.01, head_width=0.07)
     
-    movements.append([current_frame[0]])
     if len(prev_frame) == 3:
         current_vel = []
         for i in current_frame[2:]:
@@ -214,8 +239,11 @@ def algorithm(frame):
                                 works = False
                                 break
                         if works:
-                            movements[len(movements) - 1].append((i[0], round((v_x ** 2 + v_y ** 2) ** 0.5, 2),  round((math.degrees(math.atan2(v_y, v_x)) + 360) % 360)))
-                            print(f'Time {round(current_frame[0], 2)} s, object {i[0]} moving at {round((v_x ** 2 + v_y ** 2) ** 0.5, 2)} m/s toward {round((math.degrees(math.atan2(v_y, v_x)) + 360) % 360)}°')
+                            clock_time = round(((450 - round((math.degrees(math.atan2(i[2], i[1])) + 360) % 360)) % 360)/30)
+                            if clock_time == 0:
+                                clock_time = 12
+                            print(f'Time {round(current_frame[0], 2)} s - object {i[0]} @ {clock_time}:00, {round((v_x ** 2 + v_y ** 2) ** 0.5, 2)} m/s @ {round((math.degrees(math.atan2(v_y, v_x)) + 360) % 360)}°')
+                            tts_queue.put(f'{clock_time}:00, {round((v_x ** 2 + v_y ** 2) ** 0.5, 2)} meters per second @ {round((math.degrees(math.atan2(v_y, v_x)) + 360) % 360)}°')
         prev_vel = [current_vel] + prev_vel[:2]
 
     if DEBUG:
@@ -340,6 +368,5 @@ while True:
                 break
 
 if DEBUG:
-    print(movements)
     plt.tight_layout()
     plt.savefig('main.png')
