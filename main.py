@@ -89,7 +89,7 @@ MAX_RANGE = 3
 NUM_ITERATIONS = 10
 MAX_DISPLACEMENT = 3
 INTERPOLATION_DIST = 0.05
-VEL_THRESH = 0.5
+VEL_THRESH = 0.1 # 0.5
 HEADER_BYTE = 0x54
 VER_BYTE = 0x2C
 START_TIME = time.time()
@@ -198,7 +198,7 @@ def algorithm(frame):
                         new.remove(k)
                         current_frame[k[2] + 1][0] = j[2]
                         break
-        new_max = max([j[0] for j in prev_frame[0][2:]]) + 1
+        new_max = max([j[0] for j in prev_frame[0][2:]] + [0]) + 1
         for i in new:
             current_frame[i[2] + 1][0] = new_max
             new_max += 1
