@@ -33,7 +33,6 @@ class TTSThread(threading.Thread):
         tts_engine.endLoop()
 
 if not DEBUG:
-    import RPi.GPIO as GPIO
     import serial
     from adafruit_extended_bus import ExtendedI2C as I2C
 
@@ -265,9 +264,6 @@ byte_counter = 0
 byte = 0
 
 if not DEBUG:
-    GPIO.setmode(GPIO.BOARD)
-    GPIO.setup(18, GPIO.OUT)
-    GPIO.output(18, GPIO.HIGH)
     ser = serial.Serial(
         port="/dev/ttyAMA0",
         baudrate=230400,
