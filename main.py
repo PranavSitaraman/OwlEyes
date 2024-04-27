@@ -330,7 +330,7 @@ while True:
             if speed < 0:
                 continue
             for i in range(len(frame)):
-                if frame[i][POINT.ANGLE] > 20 and last_angle < 340:
+                if frame[i][POINT.ANGLE] > 20 or last_angle < 340:
                     last_angle = frame[i][POINT.ANGLE]
                     continue
                 copy_frame = frame[:i + 1]
