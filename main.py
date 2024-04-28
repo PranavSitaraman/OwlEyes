@@ -77,7 +77,7 @@ def LagrangeInterpolate(pointList, x):
     return sum
 
 tts_queue = queue.Queue()
-tts_thread = TTSThread(tts_queue)
+tts_thread = [] # TTSThread(tts_queue)
 
 STATE = Enum('STATE',['HEADER', 'VER_LEN','DATA'])
 POINT = IntEnum('POINT',['DISTANCE', 'INTENSITY', 'ANGLE', 'TIME'], start=0)
@@ -88,7 +88,7 @@ MAX_RANGE = 3
 NUM_ITERATIONS = 10
 MAX_DISPLACEMENT = 3
 INTERPOLATION_DIST = 0.05
-VEL_THRESH = 0.1 # 0.5
+VEL_THRESH = 0.3 # 0.5
 HEADER_BYTE = 0x54
 VER_BYTE = 0x2C
 START_TIME = time.time()
@@ -329,12 +329,10 @@ while True:
             prev_timestamp = timestamp
             if speed < 0:
                 continue
-            for i in range(len(frame)):
-                if frame[i][POINT.ANGLE] > 20 or last_angle < 340:
-                    last_angle = frame[i][POINT.ANGLE]
+            for i in range(1, len(frame)):
+                if (frame[0][POINT.ANGLE] - frame[i][POINT.ANGLE] + 360) % 360 > 2:
                     continue
-                copy_frame = frame[:i + 1]
-                for n in copy_frame:
+                for n in frame:
                     angle = 0
                     if n[POINT.DISTANCE] > 0:
                         x = n[POINT.DISTANCE] + 5.9
@@ -348,19 +346,22 @@ while True:
                     n[POINT.ANGLE] = angle
                     if n[POINT.DISTANCE] == 0:
                         n[POINT.INTENSITY] = 0
-                frame = frame[i + 1:]
                 if first:
                     first = False
                     break
                 final_frame = []
-                for i in copy_frame:
+                for i in frame:
                     i[POINT.ANGLE] = (810 - i[POINT.ANGLE]) % 360
                     i[POINT.DISTANCE] /= 1000
                     x = i[POINT.DISTANCE] * math.cos(math.radians(i[POINT.ANGLE]))
                     y = i[POINT.DISTANCE] * math.sin(math.radians(i[POINT.ANGLE]))
                     if x != 0 or y != 0:
                         final_frame.append((x, y))
+                frame = []
                 algorithm(final_frame)
+                if not DEBUG:
+                    ser.reset_input_buffer()
+                print(frame_count)
                 break
 
 if DEBUG:
