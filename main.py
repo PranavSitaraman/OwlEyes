@@ -13,34 +13,7 @@ import pyttsx3
 
 tts_engine = pyttsx3.init()
 tts_engine.setProperty('rate', 250)
-tts_engine.startLoop(False)
-
-def talk(message):
-    tts_engine.say(message)
-    while True:
-        tts_engine.iterate()
-
-# class TTSThread(threading.Thread):
-#     def __init__(self, queue):
-#         threading.Thread.__init__(self)
-#         self.queue = queue
-#         self.daemon = True
-#         self.start()
-
-#     def run(self):
-#         tts_engine = pyttsx3.init()
-#         tts_engine.setProperty('rate', 250)
-#         tts_engine.startLoop(False)
-#         t_running = True
-#         while t_running:
-#             if self.queue.empty():
-#                 tts_engine.iterate()
-#             else:
-#                 data = self.queue.get()
-#                 tts_engine.say(data)
-#                 while not self.queue.empty():
-#                     self.queue.get()
-#         tts_engine.endLoop()
+tts_engine.setProperty('volume', 1.0)
 
 if not DEBUG:
     import serial
@@ -86,9 +59,6 @@ def LagrangeInterpolate(pointList, x):
         sum += pointList[j][1] * value
     return sum
 
-tts_queue = queue.Queue()
-tts_thread = [] # TTSThread(tts_queue)
-
 STATE = Enum('STATE',['HEADER', 'VER_LEN','DATA'])
 POINT = IntEnum('POINT',['DISTANCE', 'INTENSITY', 'ANGLE', 'TIME'], start=0)
 
@@ -98,7 +68,7 @@ MAX_RANGE = 3
 NUM_ITERATIONS = 10
 MAX_DISPLACEMENT = 3
 INTERPOLATION_DIST = 0.05
-VEL_THRESH = 0.3 # 0.5
+VEL_THRESH = 0.5
 HEADER_BYTE = 0x54
 VER_BYTE = 0x2C
 START_TIME = time.time()
@@ -252,15 +222,8 @@ def algorithm(frame):
                             if clock_time == 0:
                                 clock_time = 12
                             print(f'Time {round(current_frame[0], 2)} s - object {i[0]} @ {clock_time}:00, {round((v_x ** 2 + v_y ** 2) ** 0.5, 2)} m/s @ {round((math.degrees(math.atan2(v_y, v_x)) + 360) % 360)}°')
-                            time.sleep(3)
-                            try:
-                                p1
-                            except NameError:
-                                pass
-                            else:
-                                p1.terminate()
-                            p1 = multiprocessing.Process(target=talk, args=(f'{clock_time}:00, {round((v_x ** 2 + v_y ** 2) ** 0.5, 2)} meters per second @ {round((math.degrees(math.atan2(v_y, v_x)) + 360) % 360)}°', )) 
-                            p1.start()
+                            tts_engine.say(f'{clock_time}:00, {round((v_x ** 2 + v_y ** 2) ** 0.5, 2)} meters per second @ {round((math.degrees(math.atan2(v_y, v_x)) + 360) % 360)}°')
+                            tts_engine.runAndWait()
         prev_vel = [current_vel] + prev_vel[:2]
 
     if DEBUG:
@@ -376,7 +339,6 @@ if __name__ == "__main__":
                         if x != 0 or y != 0:
                             final_frame.append((x, y))
                     frame = []
-                    print(frame_count)
                     algorithm(final_frame)
                     if not DEBUG:
                         ser.reset_input_buffer()
