@@ -7,30 +7,40 @@ import matplotlib.cm as cm
 import numpy as np
 from enum import Enum, IntEnum
 import threading
+import multiprocessing
 import queue
 import pyttsx3
 
-class TTSThread(threading.Thread):
-    def __init__(self, queue):
-        threading.Thread.__init__(self)
-        self.queue = queue
-        self.daemon = True
-        self.start()
+tts_engine = pyttsx3.init()
+tts_engine.setProperty('rate', 250)
+tts_engine.startLoop(False)
 
-    def run(self):
-        tts_engine = pyttsx3.init()
-        tts_engine.setProperty('rate', 250)
-        tts_engine.startLoop(False)
-        t_running = True
-        while t_running:
-            if self.queue.empty():
-                tts_engine.iterate()
-            else:
-                data = self.queue.get()
-                tts_engine.say(data)
-                while not self.queue.empty():
-                    self.queue.get()
-        tts_engine.endLoop()
+def talk(message):
+    tts_engine.say(message)
+    while True:
+        tts_engine.iterate()
+
+# class TTSThread(threading.Thread):
+#     def __init__(self, queue):
+#         threading.Thread.__init__(self)
+#         self.queue = queue
+#         self.daemon = True
+#         self.start()
+
+#     def run(self):
+#         tts_engine = pyttsx3.init()
+#         tts_engine.setProperty('rate', 250)
+#         tts_engine.startLoop(False)
+#         t_running = True
+#         while t_running:
+#             if self.queue.empty():
+#                 tts_engine.iterate()
+#             else:
+#                 data = self.queue.get()
+#                 tts_engine.say(data)
+#                 while not self.queue.empty():
+#                     self.queue.get()
+#         tts_engine.endLoop()
 
 if not DEBUG:
     import serial
@@ -242,7 +252,15 @@ def algorithm(frame):
                             if clock_time == 0:
                                 clock_time = 12
                             print(f'Time {round(current_frame[0], 2)} s - object {i[0]} @ {clock_time}:00, {round((v_x ** 2 + v_y ** 2) ** 0.5, 2)} m/s @ {round((math.degrees(math.atan2(v_y, v_x)) + 360) % 360)}°')
-                            tts_queue.put(f'{clock_time}:00, {round((v_x ** 2 + v_y ** 2) ** 0.5, 2)} meters per second @ {round((math.degrees(math.atan2(v_y, v_x)) + 360) % 360)}°')
+                            time.sleep(3)
+                            try:
+                                p1
+                            except NameError:
+                                pass
+                            else:
+                                p1.terminate()
+                            p1 = multiprocessing.Process(target=talk, args=(f'{clock_time}:00, {round((v_x ** 2 + v_y ** 2) ** 0.5, 2)} meters per second @ {round((math.degrees(math.atan2(v_y, v_x)) + 360) % 360)}°', )) 
+                            p1.start()
         prev_vel = [current_vel] + prev_vel[:2]
 
     if DEBUG:
@@ -273,97 +291,97 @@ if not DEBUG:
         timeout=1,
     )
 
-while True:
-
-    if DEBUG:
-        if byte_counter == len(RAW_DATA):
-            break
-        byte = RAW_DATA[byte_counter]
-        byte_counter += 1
-    else:
-        byte_read = ser.read()
-        if len(byte_read) == 0:
-            continue
-        byte = byte_read[0]
-    
-    if state == STATE.HEADER:
-        if byte == HEADER_BYTE:
-            tmp.append(byte)
-            state = STATE.VER_LEN
-    elif state == STATE.VER_LEN:
-        if byte == VER_BYTE:
-            tmp.append(byte)
-            state = STATE.DATA
+if __name__ == "__main__":
+    while True:
+        if DEBUG:
+            if byte_counter == len(RAW_DATA):
+                break
+            byte = RAW_DATA[byte_counter]
+            byte_counter += 1
         else:
-            tmp = []
-            state = STATE.HEADER
-    elif state == STATE.DATA:
-        tmp.append(byte)
-        if len(tmp) == 47:
-            crc = CalCRC8(tmp, len(tmp) - 1)
-            if crc != tmp[len(tmp) - 1]:
+            byte_read = ser.read()
+            if len(byte_read) == 0:
+                continue
+            byte = byte_read[0]
+        
+        if state == STATE.HEADER:
+            if byte == HEADER_BYTE:
+                tmp.append(byte)
+                state = STATE.VER_LEN
+        elif state == STATE.VER_LEN:
+            if byte == VER_BYTE:
+                tmp.append(byte)
+                state = STATE.DATA
+            else:
                 tmp = []
                 state = STATE.HEADER
-                continue
-            last_angle = 0
-            speed = 256 * tmp[3] + tmp[2]
-            start_angle = 256 * tmp[5] + tmp[4]
-            points = []
-            for i in range(12):
-                points.append([256 * tmp[7 + 3 * i] + tmp[6 + 3 * i], tmp[8 + 3 * i], 0])
-            end_angle = 256 * tmp[43] + tmp[42]
-            timestamp = 256 * tmp[45] + tmp[44]
-            tmp = []
-            state = STATE.HEADER
-            diff = (end_angle / 100 - start_angle / 100 + 360) % 360
-            if prev_timestamp == 0:
-                prev_timestamp = timestamp
-                continue
-            time_step = (timestamp - prev_timestamp)/11
-            angle_step = diff/11
-            start = start_angle/100
-            for i in range(12):
-                points[i][POINT.ANGLE] = start + i * angle_step
-                points[i][POINT.ANGLE] = (points[i][POINT.ANGLE] + 360) % 360
-                frame.append(points[i])
-            prev_timestamp = timestamp
-            if speed < 0:
-                continue
-            for i in range(1, len(frame)):
-                if (frame[0][POINT.ANGLE] - frame[i][POINT.ANGLE] + 360) % 360 > 2:
+        elif state == STATE.DATA:
+            tmp.append(byte)
+            if len(tmp) == 47:
+                crc = CalCRC8(tmp, len(tmp) - 1)
+                if crc != tmp[len(tmp) - 1]:
+                    tmp = []
+                    state = STATE.HEADER
                     continue
-                for n in frame:
-                    angle = 0
-                    if n[POINT.DISTANCE] > 0:
-                        x = n[POINT.DISTANCE] + 5.9
-                        y = n[POINT.DISTANCE] * 0.11923 - 18.975571
-                        shift = math.atan(y / x) * 180 / math.pi
-                        angle = n[POINT.ANGLE] - shift
-                        last_shift_delta = shift
-                    else:
-                        angle = n[POINT.ANGLE] - last_shift_delta
-                    angle = (angle + 360) % 360
-                    n[POINT.ANGLE] = angle
-                    if n[POINT.DISTANCE] == 0:
-                        n[POINT.INTENSITY] = 0
-                if first:
-                    first = False
+                last_angle = 0
+                speed = 256 * tmp[3] + tmp[2]
+                start_angle = 256 * tmp[5] + tmp[4]
+                points = []
+                for i in range(12):
+                    points.append([256 * tmp[7 + 3 * i] + tmp[6 + 3 * i], tmp[8 + 3 * i], 0])
+                end_angle = 256 * tmp[43] + tmp[42]
+                timestamp = 256 * tmp[45] + tmp[44]
+                tmp = []
+                state = STATE.HEADER
+                diff = (end_angle / 100 - start_angle / 100 + 360) % 360
+                if prev_timestamp == 0:
+                    prev_timestamp = timestamp
+                    continue
+                time_step = (timestamp - prev_timestamp)/11
+                angle_step = diff/11
+                start = start_angle/100
+                for i in range(12):
+                    points[i][POINT.ANGLE] = start + i * angle_step
+                    points[i][POINT.ANGLE] = (points[i][POINT.ANGLE] + 360) % 360
+                    frame.append(points[i])
+                prev_timestamp = timestamp
+                if speed < 0:
+                    continue
+                for i in range(1, len(frame)):
+                    if (frame[0][POINT.ANGLE] - frame[i][POINT.ANGLE] + 360) % 360 > 2:
+                        continue
+                    for n in frame:
+                        angle = 0
+                        if n[POINT.DISTANCE] > 0:
+                            x = n[POINT.DISTANCE] + 5.9
+                            y = n[POINT.DISTANCE] * 0.11923 - 18.975571
+                            shift = math.atan(y / x) * 180 / math.pi
+                            angle = n[POINT.ANGLE] - shift
+                            last_shift_delta = shift
+                        else:
+                            angle = n[POINT.ANGLE] - last_shift_delta
+                        angle = (angle + 360) % 360
+                        n[POINT.ANGLE] = angle
+                        if n[POINT.DISTANCE] == 0:
+                            n[POINT.INTENSITY] = 0
+                    if first:
+                        first = False
+                        break
+                    final_frame = []
+                    for i in frame:
+                        i[POINT.ANGLE] = (810 - i[POINT.ANGLE]) % 360
+                        i[POINT.DISTANCE] /= 1000
+                        x = i[POINT.DISTANCE] * math.cos(math.radians(i[POINT.ANGLE]))
+                        y = i[POINT.DISTANCE] * math.sin(math.radians(i[POINT.ANGLE]))
+                        if x != 0 or y != 0:
+                            final_frame.append((x, y))
+                    frame = []
+                    print(frame_count)
+                    algorithm(final_frame)
+                    if not DEBUG:
+                        ser.reset_input_buffer()
                     break
-                final_frame = []
-                for i in frame:
-                    i[POINT.ANGLE] = (810 - i[POINT.ANGLE]) % 360
-                    i[POINT.DISTANCE] /= 1000
-                    x = i[POINT.DISTANCE] * math.cos(math.radians(i[POINT.ANGLE]))
-                    y = i[POINT.DISTANCE] * math.sin(math.radians(i[POINT.ANGLE]))
-                    if x != 0 or y != 0:
-                        final_frame.append((x, y))
-                frame = []
-                algorithm(final_frame)
-                if not DEBUG:
-                    ser.reset_input_buffer()
-                print(frame_count)
-                break
 
-if DEBUG:
-    plt.tight_layout()
-    plt.savefig('main.png')
+    if DEBUG:
+        plt.tight_layout()
+        plt.savefig('main.png')
