@@ -218,8 +218,10 @@ def algorithm(frame):
                             clock_time = round(((450 - round((math.degrees(math.atan2(i[2], i[1])) + 360) % 360)) % 360)/30)
                             if clock_time == 0:
                                 clock_time = 12
-                            print(f'Time {round(current_frame[0], 2)} s - object {i[0]} @ {clock_time}:00, {round((v_x ** 2 + v_y ** 2) ** 0.5, 2)} m/s @ {round((math.degrees(math.atan2(v_y, v_x)) + 360) % 360)}°')
-                            tts_engine.say(f'{clock_time}:00, {round((v_x ** 2 + v_y ** 2) ** 0.5, 2)} meters per second @ {round((math.degrees(math.atan2(v_y, v_x)) + 360) % 360)}°')
+                            output_speed = round((v_x ** 2 + v_y ** 2) ** 0.5, 2)
+                            output_direction = round((math.degrees(math.atan2(v_y, v_x)) + 360) % 360)
+                            print(f'Time {round(current_frame[0], 2)} s - object {i[0]} @ {clock_time}:00, {output_speed} m/s @ {output_direction}°')
+                            tts_engine.say(f'{clock_time} o\'clock, {output_speed} meters per second at {output_direction} degrees')
                             tts_engine.runAndWait()
         prev_vel = [current_vel] + prev_vel[:2]
 
