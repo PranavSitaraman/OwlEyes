@@ -68,7 +68,8 @@ SPEEDS = {
     13: "driving car",
     22: "speeding car"
 }
-SPEED_KEYS = reversed(SPEEDS.keys())
+SPEED_KEYS = list(reversed(SPEEDS.keys()))
+print(SPEED_KEYS)
 
 GRID_SIZE = 30
 COMPONENT_THRESH = 5
