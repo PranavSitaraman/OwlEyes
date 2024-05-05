@@ -59,6 +59,17 @@ def LagrangeInterpolate(pointList, x):
 STATE = Enum('STATE',['HEADER', 'VER_LEN','DATA'])
 POINT = IntEnum('POINT',['DISTANCE', 'INTENSITY', 'ANGLE', 'TIME'], start=0)
 
+SPEEDS = {
+    0: "strolling person",
+    1: "walking person",
+    2: "running person",
+    5: "biking person",
+    9: "approaching car",
+    13: "driving car",
+    22: "speeding car"
+}
+SPEED_KEYS = reversed(SPEEDS.keys())
+
 GRID_SIZE = 30
 COMPONENT_THRESH = 5
 MAX_RANGE = 3
@@ -69,6 +80,9 @@ VEL_THRESH = 0.5
 HEADER_BYTE = 0x54
 VER_BYTE = 0x2C
 START_TIME = time.time()
+
+tts_engine.say('Welcome to OwlEyes. Booting OwlEyes version 1.0. Please stand by.')
+tts_engine.runAndWait()
 
 if DEBUG:
     DATA_LENGTH = 30
@@ -202,9 +216,8 @@ def algorithm(frame):
                     v_y += RAW_VEL[frame_count][1]
                     axis[frame_count // 4, frame_count % 4].arrow(points_x[3][1], points_y[3][1], v_x, v_y, color='black', width=0.01, head_width=0.07)
                 else:
-                    v_x += vel_y
-                    v_y += vel_x
-                
+                    v_x -= vel_y
+                    v_y -= vel_x
                 current_vel.append((i[0], v_x, v_y))
                 if len(prev_vel) == 3:
                     if i[0] in [j[0] for j in prev_vel[0]] and i[0] in [j[0] for j in prev_vel[1]] and i[0] in [j[0] for j in prev_vel[2]]:
@@ -218,10 +231,15 @@ def algorithm(frame):
                             clock_time = round(((450 - round((math.degrees(math.atan2(i[2], i[1])) + 360) % 360)) % 360)/30)
                             if clock_time == 0:
                                 clock_time = 12
+                            raw_speed = round((v_x ** 2 + v_y ** 2) ** 0.5, 2)
                             output_speed = round((v_x ** 2 + v_y ** 2) ** 0.5, 2)
                             output_direction = round((math.degrees(math.atan2(v_y, v_x)) + 360) % 360)
-                            print(f'Time {round(current_frame[0], 2)} s - object {i[0]} @ {clock_time}:00, {output_speed} m/s @ {output_direction}°')
-                            tts_engine.say(f'{clock_time} o\'clock, {output_speed} meters per second at {output_direction} degrees')
+                            for key in SPEED_KEYS:
+                                if output_speed >= key:
+                                    output_speed = key
+                                    break
+                            print(f'Time {round(current_frame[0], 2)} s - object {i[0]} @ {clock_time}:00, {SPEEDS[output_speed]} ({raw_speed} m/s) @ {output_direction}°')
+                            tts_engine.say(f'{clock_time} o\'clock, {SPEEDS[output_speed]} at {output_direction} degrees')
                             tts_engine.runAndWait()
         prev_vel = [current_vel] + prev_vel[:2]
 
