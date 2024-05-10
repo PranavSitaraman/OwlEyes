@@ -7,6 +7,7 @@ import matplotlib.cm as cm
 import numpy as np
 from enum import Enum, IntEnum
 import pyttsx3
+import subprocess
 
 tts_engine = pyttsx3.init()
 tts_engine.setProperty('rate', 250)
@@ -85,6 +86,11 @@ START_TIME = time.time()
 tts_engine.say('Welcome to OwlEyes. Booting OwlEyes version 1.0. Please stand by.')
 tts_engine.runAndWait()
 
+if not DEBUG:
+    MAC_ADDRESS = 'AC:12:2F:BF:F1:60'
+    command = f'bluetoothctl connect {MAC_ADDRESS}'
+    subprocess.run(command, shell=True)
+
 if DEBUG:
     DATA_LENGTH = 30
     MAX_SEGMENTS = 40
@@ -102,7 +108,7 @@ else:
     time.sleep(1)
     i2c.writeto(address, bytes([0X07, 0]))
     i2c.writeto(address, bytes([0X3F, 0]))
-    time.sleep(1)
+    time.sleep(1) 
     i2c.writeto(address, bytes([0X3D, 0X0C]))
     time.sleep(1)
     vel_x = 0
