@@ -70,8 +70,6 @@ SPEEDS = {
     22: "speeding car"
 }
 SPEED_KEYS = list(reversed(SPEEDS.keys()))
-print(SPEED_KEYS)
-
 GRID_SIZE = 30
 COMPONENT_THRESH = 5
 MAX_RANGE = 3
