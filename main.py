@@ -83,13 +83,16 @@ HEADER_BYTE = 0x54
 VER_BYTE = 0x2C
 START_TIME = time.time()
 
-tts_engine.say('Welcome to OwlEyes. Booting OwlEyes version 1.0. Please stand by.')
-tts_engine.runAndWait()
-
 if not DEBUG:
     MAC_ADDRESS = 'AC:12:2F:BF:F1:60'
+    #subprocess.run('bluetoothctl power on', shell=True)
+    subprocess.run('rfkill unblock all', shell=True)
+    time.sleep(5)
     command = f'bluetoothctl connect {MAC_ADDRESS}'
     subprocess.run(command, shell=True)
+
+tts_engine.say('Welcome to OwlEyes. Booting OwlEyes version 1.0. Please stand by.')
+tts_engine.runAndWait()
 
 if DEBUG:
     DATA_LENGTH = 30
