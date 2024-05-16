@@ -81,15 +81,15 @@ INTERPOLATION_DIST = 0.05
 VEL_THRESH = 0.5
 HEADER_BYTE = 0x54
 VER_BYTE = 0x2C
+MAC_ADDRESS = 'AC:12:2F:BF:F1:60'
 START_TIME = time.time()
 
 if not DEBUG:
-    MAC_ADDRESS = 'AC:12:2F:BF:F1:60'
-    #subprocess.run('bluetoothctl power on', shell=True)
     subprocess.run('rfkill unblock all', shell=True)
     time.sleep(5)
-    command = f'bluetoothctl connect {MAC_ADDRESS}'
-    subprocess.run(command, shell=True)
+    subprocess.run('bluetoothctl power on', shell=True)
+    time.sleep(5)
+    subprocess.run(f'bluetoothctl connect {MAC_ADDRESS}', shell=True)
 
 tts_engine.say('Welcome to OwlEyes. Booting OwlEyes version 1.0. Please stand by.')
 tts_engine.runAndWait()
