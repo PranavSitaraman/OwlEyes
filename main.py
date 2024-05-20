@@ -70,13 +70,13 @@ SPEEDS = {
     22: "speeding car"
 }
 SPEED_KEYS = list(reversed(SPEEDS.keys()))
-GRID_SIZE = 30
+GRID_SIZE = 50
 COMPONENT_THRESH = 5
-MAX_RANGE = 3
+MAX_RANGE = 5
 NUM_ITERATIONS = 10
 MAX_DISPLACEMENT = 3
 INTERPOLATION_DIST = 0.05
-VEL_THRESH = 0.5
+VEL_THRESH = 0.7
 HEADER_BYTE = 0x54
 VER_BYTE = 0x2C
 MAC_ADDRESS = 'AC:12:2F:BF:F1:60'
@@ -141,8 +141,8 @@ def algorithm(frame):
             y -= 65536
         x /= 100
         y /= 100
-        vel_x *= 0.7
-        vel_y *= 0.7
+        vel_x *= 0.8
+        vel_y *= 0.8
         if abs(x) > 0.5:
             vel_x += 1/6 * x
         if abs(y) > 0.5:
@@ -224,15 +224,14 @@ def algorithm(frame):
                     v_y += RAW_VEL[frame_count][1]
                     axis[frame_count // 4, frame_count % 4].arrow(points_x[3][1], points_y[3][1], v_x, v_y, color='black', width=0.01, head_width=0.07)
                 else:
-                    v_x -= vel_y
-                    v_y -= vel_x
+                    pass
                 current_vel.append((i[0], v_x, v_y))
                 if len(prev_vel) == 3:
                     if i[0] in [j[0] for j in prev_vel[0]] and i[0] in [j[0] for j in prev_vel[1]] and i[0] in [j[0] for j in prev_vel[2]]:
                         works = True
                         for j in range(3):
                             a, b = [prev_vel[j][[k for k in range(len(prev_vel[j])) if prev_vel[j][k][0] == i[0]][0]][p] for p in range(1, 3)]
-                            if a * v_x + b * v_y < VEL_THRESH:
+                            if a * v_x + b * v_y < VEL_THRESH * ((v_x ** 2 + v_y ** 2) ** 0.5) * ((a ** 2 + b ** 2) ** 0.5):
                                 works = False
                                 break
                         if works:
@@ -240,15 +239,19 @@ def algorithm(frame):
                             if clock_time == 0:
                                 clock_time = 12
                             raw_speed = round((v_x ** 2 + v_y ** 2) ** 0.5, 2)
+                            vel_speed = round((vel_x ** 2 + vel_y ** 2) ** 0.5, 2)
+                            if v_x * vel_y + v_y * vel_x < -0.5 * raw_speed * vel_speed:
+                                continue
                             output_speed = round((v_x ** 2 + v_y ** 2) ** 0.5, 2)
                             output_direction = round((math.degrees(math.atan2(v_y, v_x)) + 360) % 360)
                             for key in SPEED_KEYS:
                                 if output_speed >= key:
                                     output_speed = key
                                     break
-                            print(f'Time {round(current_frame[0], 2)} s - object {i[0]} @ {clock_time}:00, {SPEEDS[output_speed]} ({raw_speed} m/s) @ {output_direction}°')
-                            tts_engine.say(f'{clock_time} o\'clock, {SPEEDS[output_speed]} at {output_direction} degrees')
-                            tts_engine.runAndWait()
+                            if output_speed > 0:
+                                print(f'Time {round(current_frame[0], 2)} s - object {i[0]} @ {clock_time}:00, {SPEEDS[output_speed]} ({raw_speed} m/s) @ {output_direction}°')
+                                tts_engine.say(f'{clock_time} o\'clock, {SPEEDS[output_speed]} at {output_direction} degrees')
+                                tts_engine.runAndWait()
         prev_vel = [current_vel] + prev_vel[:2]
 
     if DEBUG:
