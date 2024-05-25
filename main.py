@@ -1,4 +1,5 @@
 DEBUG = False
+DISPLAY = True
 
 import math
 import time
@@ -8,6 +9,12 @@ import numpy as np
 from enum import Enum, IntEnum
 import pyttsx3
 import subprocess
+
+DISPLAY = DISPLAY and (not DEBUG)
+
+if DISPLAY:
+    plt.ion()
+    plt.figure(figsize=(10,6))
 
 tts_engine = pyttsx3.init()
 tts_engine.setProperty('rate', 250)
@@ -208,7 +215,15 @@ def algorithm(frame):
             axis[frame_count // 4, frame_count % 4].scatter(current_frame[i][1], current_frame[i][2], color='black', marker='*')
         axis[frame_count // 4, frame_count % 4].scatter(0, 0, color='red', marker='x')
         axis[frame_count // 4, frame_count % 4].arrow(0, 0, RAW_VEL[frame_count][0], RAW_VEL[frame_count][1], color='red', width=0.01, head_width=0.07)
-    
+    elif DISPLAY:
+        color_options = cm.rainbow(np.linspace(0, 1, len(current_frame) - 2))
+        plt.scatter(current_frame[1][3], current_frame[1][4], color='white')
+        for i in range(2, len(current_frame)):
+            plt.scatter(current_frame[i][3], current_frame[i][4], color=color_options[current_frame[i][0] - 1], s=5, label=current_frame[i][0])
+            plt.scatter(current_frame[i][1], current_frame[i][2], color='black', marker='*')
+        plt.scatter(0, 0, color='red', marker='x')
+        plt.arrow(0, 0, vel_y, vel_x, color='red', width=0.01, head_width=0.07)
+
     if len(prev_frame) == 3:
         current_vel = []
         for i in current_frame[2:]:
@@ -224,7 +239,11 @@ def algorithm(frame):
                     v_y += RAW_VEL[frame_count][1]
                     axis[frame_count // 4, frame_count % 4].arrow(points_x[3][1], points_y[3][1], v_x, v_y, color='black', width=0.01, head_width=0.07)
                 else:
-                    pass
+                    v_x += vel_y
+                    v_y += vel_x
+                    if DISPLAY:
+                        plt.arrow(points_x[3][1], points_y[3][1], v_x, v_y, color='black', width=0.01, head_width=0.07)
+                
                 current_vel.append((i[0], v_x, v_y))
                 if len(prev_vel) == 3:
                     if i[0] in [j[0] for j in prev_vel[0]] and i[0] in [j[0] for j in prev_vel[1]] and i[0] in [j[0] for j in prev_vel[2]]:
@@ -239,18 +258,15 @@ def algorithm(frame):
                             if clock_time == 0:
                                 clock_time = 12
                             raw_speed = round((v_x ** 2 + v_y ** 2) ** 0.5, 2)
-                            vel_speed = round((vel_x ** 2 + vel_y ** 2) ** 0.5, 2)
-                            if v_x * vel_y + v_y * vel_x < -0.5 * raw_speed * vel_speed:
-                                continue
-                            output_speed = round((v_x ** 2 + v_y ** 2) ** 0.5, 2)
+                            speed_translate = round((v_x ** 2 + v_y ** 2) ** 0.5, 2)
                             output_direction = round((math.degrees(math.atan2(v_y, v_x)) + 360) % 360)
                             for key in SPEED_KEYS:
-                                if output_speed >= key:
-                                    output_speed = key
+                                if raw_speed >= key:
+                                    speed_translate = key
                                     break
-                            if output_speed > 0:
-                                print(f'Time {round(current_frame[0], 2)} s - object {i[0]} @ {clock_time}:00, {SPEEDS[output_speed]} ({raw_speed} m/s) @ {output_direction}°')
-                                tts_engine.say(f'{clock_time} o\'clock, {SPEEDS[output_speed]} at {output_direction} degrees')
+                            if speed_translate > 0:
+                                print(f'Time {round(current_frame[0], 2)} s - object {i[0]} @ {clock_time}:00, {SPEEDS[speed_translate]} ({raw_speed} m/s) @ {output_direction}°')
+                                tts_engine.say(f'{clock_time} o\'clock, {SPEEDS[speed_translate]} at {output_direction} degrees')
                                 tts_engine.runAndWait()
         prev_vel = [current_vel] + prev_vel[:2]
 
@@ -259,6 +275,11 @@ def algorithm(frame):
         axis[frame_count // 4, frame_count % 4].set_ylim(-MAX_RANGE, MAX_RANGE)
         axis[frame_count // 4, frame_count % 4].set_title(f'Time: {round(current_frame[0], 2)} s')
         axis[frame_count // 4, frame_count % 4].legend()
+    elif DISPLAY:
+        plt.set_xlim(-MAX_RANGE, MAX_RANGE)
+        plt.set_ylim(-MAX_RANGE, MAX_RANGE)
+        plt.show()
+        plt.pause(0.01)
 
     prev_frame = [[current_frame[0]] + [i[:3] for i in current_frame[1:]]] + prev_frame[:2]
     frame_count += 1
