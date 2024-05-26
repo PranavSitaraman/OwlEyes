@@ -148,12 +148,12 @@ def algorithm(frame):
             y -= 65536
         x /= 100
         y /= 100
-        vel_x *= 0.8
-        vel_y *= 0.8
+        vel_x *= 0.7
+        vel_y *= 0.7
         if abs(x) > 0.5:
-            vel_x += 1/6 * x
+            vel_x -= 1/6 * y
         if abs(y) > 0.5:
-            vel_y += 1/6 * y
+            vel_y -= 1/6 * x
     current_frame = [time.time() - START_TIME, [0, 0, 0, [], []]]
     points = [[i[0], i[1]] for i in frame if abs(i[0]) < MAX_RANGE and abs(i[1]) < MAX_RANGE]
     grid = [[0 for i in range(GRID_SIZE)] for j in range(GRID_SIZE)]
@@ -219,10 +219,10 @@ def algorithm(frame):
         color_options = cm.rainbow(np.linspace(0, 1, len(current_frame) - 2))
         plt.scatter(current_frame[1][3], current_frame[1][4], color='white')
         for i in range(2, len(current_frame)):
-            plt.scatter(current_frame[i][3], current_frame[i][4], color=color_options[current_frame[i][0] - 1], s=5, label=current_frame[i][0])
+            plt.scatter(current_frame[i][3], current_frame[i][4], color=color_options[i - 2], s=5, label=current_frame[i][0])
             plt.scatter(current_frame[i][1], current_frame[i][2], color='black', marker='*')
         plt.scatter(0, 0, color='red', marker='x')
-        plt.arrow(0, 0, vel_y, vel_x, color='red', width=0.01, head_width=0.07)
+        plt.arrow(0, 0, vel_x, vel_y, color='red', width=0.01, head_width=0.07)
 
     if len(prev_frame) == 3:
         current_vel = []
@@ -239,8 +239,8 @@ def algorithm(frame):
                     v_y += RAW_VEL[frame_count][1]
                     axis[frame_count // 4, frame_count % 4].arrow(points_x[3][1], points_y[3][1], v_x, v_y, color='black', width=0.01, head_width=0.07)
                 else:
-                    v_x += vel_y
-                    v_y += vel_x
+                    v_x += vel_x
+                    v_y += vel_y
                     if DISPLAY:
                         plt.arrow(points_x[3][1], points_y[3][1], v_x, v_y, color='black', width=0.01, head_width=0.07)
                 
@@ -266,8 +266,8 @@ def algorithm(frame):
                                     break
                             if speed_translate > 0:
                                 print(f'Time {round(current_frame[0], 2)} s - object {i[0]} @ {clock_time}:00, {SPEEDS[speed_translate]} ({raw_speed} m/s) @ {output_direction}°')
-                                tts_engine.say(f'{clock_time} o\'clock, {SPEEDS[speed_translate]} at {output_direction} degrees')
-                                tts_engine.runAndWait()
+                                # tts_engine.say(f'{clock_time} o\'clock, {SPEEDS[speed_translate]} at {output_direction} degrees')
+                                # tts_engine.runAndWait()
         prev_vel = [current_vel] + prev_vel[:2]
 
     if DEBUG:
@@ -276,10 +276,11 @@ def algorithm(frame):
         axis[frame_count // 4, frame_count % 4].set_title(f'Time: {round(current_frame[0], 2)} s')
         axis[frame_count // 4, frame_count % 4].legend()
     elif DISPLAY:
-        plt.set_xlim(-MAX_RANGE, MAX_RANGE)
-        plt.set_ylim(-MAX_RANGE, MAX_RANGE)
-        plt.show()
-        plt.pause(0.01)
+        plt.xlim(-MAX_RANGE, MAX_RANGE)
+        plt.ylim(-MAX_RANGE, MAX_RANGE)
+        plt.draw()
+        plt.pause(0.001)
+        plt.clf()
 
     prev_frame = [[current_frame[0]] + [i[:3] for i in current_frame[1:]]] + prev_frame[:2]
     frame_count += 1
