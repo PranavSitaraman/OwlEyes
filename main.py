@@ -8,7 +8,7 @@ import matplotlib.cm as cm
 import numpy as np
 from enum import Enum, IntEnum
 import pyttsx3
-import multiprocessing
+from multiprocessing import Process, Value, Lock
 import subprocess
 
 DISPLAY = DISPLAY and (not DEBUG)
@@ -84,7 +84,7 @@ MAX_RANGE = 5
 NUM_ITERATIONS = 10
 MAX_DISPLACEMENT = 3
 INTERPOLATION_DIST = 0.05
-VEL_THRESH = 0.7
+VEL_THRESH = 0.5
 HEADER_BYTE = 0x54
 VER_BYTE = 0x2C
 MAC_ADDRESS = 'AC:12:2F:BF:F1:60'
@@ -120,20 +120,18 @@ else:
     time.sleep(1) 
     i2c.writeto(address, bytes([0X3D, 0X0C]))
     time.sleep(1)
-    vel_x = 0
-    vel_y = 0
     buffer = [0] * 6
 
+vel_x = 0
+vel_y = 0
 current_frame = []
 prev_frame = []
 prev_vel = []
 frame_count = 0
 prev_time = time.time()
 
-def update_imu():
+def update_imu(vel_x, vel_y, lock):
     global i2c
-    global vel_x
-    global vel_y
     global prev_time
     while True:
         i2c.writeto_then_readfrom(address, bytes([0X28]), buffer)
@@ -146,16 +144,19 @@ def update_imu():
             y -= 65536
         x /= 100
         y /= 100
-        vel_x *= 0.7
-        vel_y *= 0.7
-        if abs(x) > 0.5:
-            vel_x -= (new_time - prev_time) * y
-        if abs(y) > 0.5:
-            vel_y -= (new_time - prev_time) * x
+        with lock:
+            vel_x.value -= (new_time - prev_time) * y
+            vel_y.value -= (new_time - prev_time) * x
+            vel_x.value *= 0.8
+            vel_y.value *= 0.8
         prev_time = new_time
+        time.sleep(0.01)
 
 if not DEBUG:
-    p1 = multiprocessing.Process(target=update_imu, args=()) 
+    imua = Value('d', 0.0)
+    imub = Value('d', 0.0)
+    lock = Lock()
+    p1 = Process(target=update_imu, args=(imua, imub, lock)) 
     p1.start()
 
 def algorithm(frame):
@@ -166,8 +167,8 @@ def algorithm(frame):
     global color_options
     global axis
     global buffer
-    global vel_x
-    global vel_y    
+    vel_x = imua.value
+    vel_y = imub.value
     current_frame = [time.time() - START_TIME, [0, 0, 0, [], []]]
     points = [[i[0], i[1]] for i in frame if abs(i[0]) < MAX_RANGE and abs(i[1]) < MAX_RANGE]
     grid = [[0 for i in range(GRID_SIZE)] for j in range(GRID_SIZE)]
@@ -272,7 +273,7 @@ def algorithm(frame):
                             if clock_time == 0:
                                 clock_time = 12
                             raw_speed = round((v_x ** 2 + v_y ** 2) ** 0.5, 2)
-                            speed_translate = round((v_x ** 2 + v_y ** 2) ** 0.5, 2)
+                            speed_translate = 0
                             output_direction = round((math.degrees(math.atan2(v_y, v_x)) + 360) % 360)
                             for key in SPEED_KEYS:
                                 if raw_speed >= key:
@@ -280,8 +281,8 @@ def algorithm(frame):
                                     break
                             if speed_translate > 0:
                                 print(f'Time {round(current_frame[0], 2)} s - object {i[0]} @ {clock_time}:00, {SPEEDS[speed_translate]} ({raw_speed} m/s) @ {output_direction}°')
-                                # tts_engine.say(f'{clock_time} o\'clock, {SPEEDS[speed_translate]} at {output_direction} degrees')
-                                # tts_engine.runAndWait()
+                                tts_engine.say(f'{clock_time} o\'clock, {SPEEDS[speed_translate]} at {output_direction} degrees')
+                                tts_engine.runAndWait()
         prev_vel = [current_vel] + prev_vel[:2]
 
     if DEBUG:
