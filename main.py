@@ -8,6 +8,7 @@ import matplotlib.cm as cm
 import numpy as np
 from enum import Enum, IntEnum
 import pyttsx3
+import multiprocessing
 import subprocess
 
 DISPLAY = DISPLAY and (not DEBUG)
@@ -127,6 +128,35 @@ current_frame = []
 prev_frame = []
 prev_vel = []
 frame_count = 0
+prev_time = time.time()
+
+def update_imu():
+    global i2c
+    global vel_x
+    global vel_y
+    global prev_time
+    while True:
+        i2c.writeto_then_readfrom(address, bytes([0X28]), buffer)
+        x = ((buffer[0]) | ((buffer[1]) << 8))
+        y = ((buffer[2]) | ((buffer[3]) << 8))
+        new_time = time.time()
+        if x > 32767:
+            x -= 65536
+        if y > 32767:
+            y -= 65536
+        x /= 100
+        y /= 100
+        vel_x *= 0.7
+        vel_y *= 0.7
+        if abs(x) > 0.5:
+            vel_x -= (new_time - prev_time) * y
+        if abs(y) > 0.5:
+            vel_y -= (new_time - prev_time) * x
+        prev_time = new_time
+
+if not DEBUG:
+    p1 = multiprocessing.Process(target=update_imu, args=()) 
+    p1.start()
 
 def algorithm(frame):
     global frame_count
@@ -137,23 +167,7 @@ def algorithm(frame):
     global axis
     global buffer
     global vel_x
-    global vel_y
-    if not DEBUG:
-        i2c.writeto_then_readfrom(address, bytes([0X28]), buffer)
-        x = ((buffer[0]) | ((buffer[1]) << 8))
-        y = ((buffer[2]) | ((buffer[3]) << 8))
-        if x > 32767:
-            x -= 65536
-        if y > 32767:
-            y -= 65536
-        x /= 100
-        y /= 100
-        vel_x *= 0.7
-        vel_y *= 0.7
-        if abs(x) > 0.5:
-            vel_x -= 1/6 * y
-        if abs(y) > 0.5:
-            vel_y -= 1/6 * x
+    global vel_y    
     current_frame = [time.time() - START_TIME, [0, 0, 0, [], []]]
     points = [[i[0], i[1]] for i in frame if abs(i[0]) < MAX_RANGE and abs(i[1]) < MAX_RANGE]
     grid = [[0 for i in range(GRID_SIZE)] for j in range(GRID_SIZE)]
