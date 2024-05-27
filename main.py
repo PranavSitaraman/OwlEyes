@@ -248,12 +248,12 @@ def algorithm(frame):
             if i[0] in [j[0] for j in k[1:]]:
                 points_x.append((k[0],k[[j for j in range(1, len(k)) if k[j][0] == i[0]][0]][1]))
                 points_y.append((k[0],k[[j for j in range(1, len(k)) if k[j][0] == i[0]][0]][2]))
-        points_x.append(current_frame[0], i[1])
-        points_y.append(current_frame[0], i[2])
+        points_x.append((current_frame[0], i[1]))
+        points_y.append((current_frame[0], i[2]))
         points_x.sort()
         points_y.sort()
 
-        if len(points_x) == 1:
+        if len(points_x) <= 1:
             continue
         
         v_x = (LagrangeInterpolate(points_x, points_x[-1][0] + INTERPOLATION_DIST) - LagrangeInterpolate(points_x, points_x[-1][0] - INTERPOLATION_DIST))/(2 * INTERPOLATION_DIST)
