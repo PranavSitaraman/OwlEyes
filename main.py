@@ -240,31 +240,31 @@ def algorithm(frame):
         plt.scatter(0, 0, color='red', marker='x')
         plt.arrow(0, 0, vel_x, vel_y, color='red', width=0.01, head_width=0.07)
 
-    if len(prev_frame) == 2:
+    if len(prev_frame) == 3:
         current_vel = []
         for i in current_frame[2:]:
-            if i[0] in [j[0] for j in prev_frame[0][1:]] and i[0] in [j[0] for j in prev_frame[1][1:]]:
+            if i[0] in [j[0] for j in prev_frame[0][1:]] and i[0] in [j[0] for j in prev_frame[1][1:]] and i[0] in [j[0] for j in prev_frame[2][1:]]:
                 points_x, points_y = [[(k[0],k[[j for j in range(1, len(k)) if k[j][0] == i[0]][0]][p]) for k in prev_frame] + [(current_frame[0], i[p])] for p in range(1, 3)] 
                 points_x.sort()
                 points_y.sort()
-                v_x = (LagrangeInterpolate(points_x, points_x[2][0] + INTERPOLATION_DIST) - LagrangeInterpolate(points_x, points_x[2][0] - INTERPOLATION_DIST))/(points_x[2][0] - points_x[0][0] + 2 * INTERPOLATION_DIST)
-                v_y = (LagrangeInterpolate(points_y, points_y[2][0] + INTERPOLATION_DIST) - LagrangeInterpolate(points_y, points_y[2][0] - INTERPOLATION_DIST))/(points_y[2][0] - points_y[0][0] + 2 * INTERPOLATION_DIST)
+                v_x = (LagrangeInterpolate(points_x, points_x[3][0] + INTERPOLATION_DIST) - LagrangeInterpolate(points_x, points_x[0][0] - INTERPOLATION_DIST))/(points_x[3][0] - points_x[0][0] + 2 * INTERPOLATION_DIST)
+                v_y = (LagrangeInterpolate(points_y, points_y[3][0] + INTERPOLATION_DIST) - LagrangeInterpolate(points_y, points_y[0][0] - INTERPOLATION_DIST))/(points_y[3][0] - points_y[0][0] + 2 * INTERPOLATION_DIST)
                 
                 if DEBUG:
                     v_x += RAW_VEL[frame_count][0]
                     v_y += RAW_VEL[frame_count][1]
-                    axis[frame_count // 4, frame_count % 4].arrow(points_x[2][1], points_y[2][1], v_x, v_y, color='black', width=0.01, head_width=0.07)
+                    axis[frame_count // 4, frame_count % 4].arrow(points_x[3][1], points_y[3][1], v_x, v_y, color='black', width=0.01, head_width=0.07)
                 else:
                     v_x += vel_x
                     v_y += vel_y
                     if DISPLAY:
-                        plt.arrow(points_x[2][1], points_y[2][1], v_x, v_y, color='black', width=0.01, head_width=0.07)
+                        plt.arrow(points_x[3][1], points_y[3][1], v_x, v_y, color='black', width=0.01, head_width=0.07)
                 
                 current_vel.append((i[0], v_x, v_y))
-                if len(prev_vel) == 2:
-                    if i[0] in [j[0] for j in prev_vel[0]] and i[0] in [j[0] for j in prev_vel[1]]:
+                if len(prev_vel) == 3:
+                    if i[0] in [j[0] for j in prev_vel[0]] and i[0] in [j[0] for j in prev_vel[1]] and i[0] in [j[0] for j in prev_vel[2]]:
                         works = True
-                        for j in range(2):
+                        for j in range(3):
                             a, b = [prev_vel[j][[k for k in range(len(prev_vel[j])) if prev_vel[j][k][0] == i[0]][0]][p] for p in range(1, 3)]
                             if a * v_x + b * v_y < VEL_THRESH * ((v_x ** 2 + v_y ** 2) ** 0.5) * ((a ** 2 + b ** 2) ** 0.5):
                                 works = False
@@ -289,7 +289,7 @@ def algorithm(frame):
                             print(f'Time {round(current_frame[0], 2)} s - object {i[0]} @ {clock_time}:00, {SPEEDS[speed_translate]} ({raw_speed} m/s) @ {output_direction}°')
                             tts_engine.say(f'{clock_time} o\'clock, {SPEEDS[speed_translate]} at {output_direction} degrees')
                             tts_engine.runAndWait()
-        prev_vel = [current_vel] + prev_vel[:1]
+        prev_vel = [current_vel] + prev_vel[:2]
 
     if DEBUG:
         axis[frame_count // 4, frame_count % 4].set_xlim(-MAX_RANGE, MAX_RANGE)
@@ -303,7 +303,7 @@ def algorithm(frame):
         plt.xlim(-MAX_RANGE, MAX_RANGE)
         plt.ylim(-MAX_RANGE, MAX_RANGE)
 
-    prev_frame = [[current_frame[0]] + [i[:3] for i in current_frame[1:]]] + prev_frame[:1]
+    prev_frame = [[current_frame[0]] + [i[:3] for i in current_frame[1:]]] + prev_frame[:2]
     frame_count += 1
 
 tmp = []
