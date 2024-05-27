@@ -65,7 +65,8 @@ STATE = Enum('STATE',['HEADER', 'VER_LEN','DATA'])
 POINT = IntEnum('POINT',['DISTANCE', 'INTENSITY', 'ANGLE', 'TIME'], start=0)
 
 SPEEDS = {
-    0: "strolling person",
+    0: "stationary",
+    0.5: "strolling person",
     1: "walking person",
     2: "running person",
     5: "biking person",
@@ -279,10 +280,15 @@ def algorithm(frame):
                                 if raw_speed >= key:
                                     speed_translate = key
                                     break
-                            if speed_translate > 0:
-                                print(f'Time {round(current_frame[0], 2)} s - object {i[0]} @ {clock_time}:00, {SPEEDS[speed_translate]} ({raw_speed} m/s) @ {output_direction}°')
-                                tts_engine.say(f'{clock_time} o\'clock, {SPEEDS[speed_translate]} at {output_direction} degrees')
-                                tts_engine.runAndWait()
+                            if speed_translate == 0:
+                                continue
+                            if DISPLAY:
+                                plt.arrow(points_x[3][1], points_y[3][1], v_x, v_y, color='red', width=0.1, head_width=0.5)
+                            plt.draw()
+                            plt.pause(0.001)
+                            print(f'Time {round(current_frame[0], 2)} s - object {i[0]} @ {clock_time}:00, {SPEEDS[speed_translate]} ({raw_speed} m/s) @ {output_direction}°')
+                            tts_engine.say(f'{clock_time} o\'clock, {SPEEDS[speed_translate]} at {output_direction} degrees')
+                            tts_engine.runAndWait()
         prev_vel = [current_vel] + prev_vel[:2]
 
     if DEBUG:
@@ -291,11 +297,11 @@ def algorithm(frame):
         axis[frame_count // 4, frame_count % 4].set_title(f'Time: {round(current_frame[0], 2)} s')
         axis[frame_count // 4, frame_count % 4].legend()
     elif DISPLAY:
-        plt.xlim(-MAX_RANGE, MAX_RANGE)
-        plt.ylim(-MAX_RANGE, MAX_RANGE)
         plt.draw()
         plt.pause(0.001)
         plt.clf()
+        plt.xlim(-MAX_RANGE, MAX_RANGE)
+        plt.ylim(-MAX_RANGE, MAX_RANGE)
 
     prev_frame = [[current_frame[0]] + [i[:3] for i in current_frame[1:]]] + prev_frame[:2]
     frame_count += 1
