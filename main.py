@@ -17,10 +17,6 @@ if DISPLAY:
     plt.ion()
     plt.figure(figsize=(10,6))
 
-tts_engine = pyttsx3.init()
-tts_engine.setProperty('rate', 250)
-tts_engine.setProperty('volume', 1.0)
-
 if not DEBUG:
     import serial
     from adafruit_extended_bus import ExtendedI2C as I2C
@@ -87,7 +83,7 @@ INTERPOLATION_DIST = 0.05
 VEL_THRESH = 0.5
 HEADER_BYTE = 0x54
 VER_BYTE = 0x2C
-MAC_ADDRESS = 'AC:12:2F:BF:F1:60'
+MAC_ADDRESS = '31:E7:15:BD:02:C5'
 START_TIME = time.time()
 
 if not DEBUG:
@@ -96,7 +92,11 @@ if not DEBUG:
     subprocess.run('bluetoothctl power on', shell=True)
     time.sleep(5)
     subprocess.run(f'bluetoothctl connect {MAC_ADDRESS}', shell=True)
+    time.sleep(5)
 
+tts_engine = pyttsx3.init()
+tts_engine.setProperty('rate', 250)
+tts_engine.setProperty('volume', 1.0)
 tts_engine.say('Welcome to OwlEyes. Booting OwlEyes version 1.0. Please stand by.')
 tts_engine.runAndWait()
 
