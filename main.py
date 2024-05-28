@@ -1,5 +1,6 @@
 DEBUG = False
 DISPLAY = True
+RECORD = False
 
 import math
 import time
@@ -12,6 +13,7 @@ from multiprocessing import Process, Value, Lock
 import subprocess
 
 DISPLAY = DISPLAY and (not DEBUG)
+RECORD = RECORD and DISPLAY
 
 if DISPLAY:
     plt.ion()
@@ -125,6 +127,7 @@ else:
 
 vel_x = 0
 vel_y = 0
+image_count = 4
 current_frame = []
 prev_frame = []
 prev_vel = []
@@ -168,6 +171,7 @@ def algorithm(frame):
     global color_options
     global axis
     global buffer
+    global image_count
     vel_x = imua.value
     vel_y = imub.value
     current_frame = [time.time() - START_TIME, [0, 0, 0, [], []]]
@@ -300,11 +304,14 @@ def algorithm(frame):
                 continue
             if DISPLAY:
                 plt.arrow(points_x[-1][1], points_y[-1][1], v_x, v_y, color='red', width=0.1, head_width=0.5)
-            plt.draw()
-            plt.pause(0.001)
+                plt.draw()
+                plt.pause(0.001)
             print(f'Time {round(current_frame[0], 2)} s - object {i[0]} @ {clock_time}:00, {SPEEDS[speed_translate]} ({raw_speed} m/s) @ {output_direction}°')
             tts_engine.say(f'{clock_time} o\'clock, {SPEEDS[speed_translate]} at {output_direction} degrees')
             tts_engine.runAndWait()
+            if RECORD:
+                plt.savefig('recordings/' + str(image_count) + '.png')
+                image_count += 1
 
     prev_vel = [current_vel] + prev_vel[:2]
 
