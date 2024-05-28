@@ -66,7 +66,7 @@ POINT = IntEnum('POINT',['DISTANCE', 'INTENSITY', 'ANGLE', 'TIME'], start=0)
 
 SPEEDS = {
     0: "stationary",
-    0.5: "strolling person",
+    0.6: "strolling person",
     1: "walking person",
     2: "running person",
     5: "biking person",
@@ -80,8 +80,8 @@ COMPONENT_THRESH = 5
 MAX_RANGE = 5
 NUM_ITERATIONS = 10
 MAX_DISPLACEMENT = 3
-INTERPOLATION_DIST = 0.05
-VEL_THRESH = 0.5
+INTERPOLATION_DIST = 0.01
+VEL_THRESH = 0.6
 HEADER_BYTE = 0x54
 VER_BYTE = 0x2C
 MAC_ADDRESS = '31:E7:15:BD:02:C5'
@@ -252,12 +252,18 @@ def algorithm(frame):
         points_y.append((current_frame[0], i[2]))
         points_x.sort()
         points_y.sort()
-
-        if len(points_x) <= 1:
-            continue
         
-        v_x = (LagrangeInterpolate(points_x, points_x[-1][0] + INTERPOLATION_DIST) - LagrangeInterpolate(points_x, points_x[-1][0] - INTERPOLATION_DIST))/(2 * INTERPOLATION_DIST)
-        v_y = (LagrangeInterpolate(points_y, points_y[-1][0] + INTERPOLATION_DIST) - LagrangeInterpolate(points_y, points_y[-1][0] - INTERPOLATION_DIST))/(2 * INTERPOLATION_DIST)
+        v_x = 0
+        v_y = 0
+
+        if len(points_x) < 3:
+            continue
+
+        for q in range(len(points_x)):
+            v_x += (LagrangeInterpolate(points_x, points_x[q][0] + INTERPOLATION_DIST) - LagrangeInterpolate(points_x, points_x[q][0] - INTERPOLATION_DIST))/(2 * INTERPOLATION_DIST)
+            v_y += (LagrangeInterpolate(points_y, points_y[q][0] + INTERPOLATION_DIST) - LagrangeInterpolate(points_y, points_y[q][0] - INTERPOLATION_DIST))/(2 * INTERPOLATION_DIST)
+        v_x /= len(points_x)
+        v_y /= len(points_y)
         
         if DEBUG:
             v_x += RAW_VEL[frame_count][0]
