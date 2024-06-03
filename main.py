@@ -1,6 +1,7 @@
 DEBUG = False
 DISPLAY = True
 RECORD = False
+SPEAKER = False
 
 import math
 import time
@@ -71,8 +72,7 @@ SPEEDS = {
     0.6: "strolling person",
     1: "walking person",
     2: "running person",
-    5: "biking person",
-    9: "approaching car",
+    5: "approaching car",
     13: "driving car",
     22: "speeding car"
 }
@@ -87,6 +87,8 @@ VEL_THRESH = 0.6
 HEADER_BYTE = 0x54
 VER_BYTE = 0x2C
 MAC_ADDRESS = '31:E7:15:BD:02:C5'
+if SPEAKER:
+    MAC_ADDRESS = '00:13:EF:B0:25:52'
 START_TIME = time.time()
 
 if not DEBUG:
