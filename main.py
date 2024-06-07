@@ -1,7 +1,7 @@
 DEBUG = False
 DISPLAY = True
 RECORD = False
-SPEAKER = False
+SPEAKER = True
 
 import math
 import time
@@ -100,7 +100,7 @@ if not DEBUG:
     time.sleep(5)
 
 tts_engine = pyttsx3.init()
-tts_engine.setProperty('rate', 250)
+tts_engine.setProperty('rate', 200)
 tts_engine.setProperty('volume', 1.0)
 tts_engine.say('Welcome to OwlEyes. Booting OwlEyes version 1.0. Please stand by.')
 tts_engine.runAndWait()
@@ -309,7 +309,7 @@ def algorithm(frame):
                 plt.draw()
                 plt.pause(0.001)
             print(f'Time {round(current_frame[0], 2)} s - object {i[0]} @ {clock_time}:00, {SPEEDS[speed_translate]} ({raw_speed} m/s) @ {output_direction}°')
-            tts_engine.say(f'{clock_time} o\'clock, {SPEEDS[speed_translate]} at {output_direction} degrees')
+            tts_engine.say(f'At {clock_time} o\'clock, {SPEEDS[speed_translate]} at {output_direction} degrees')
             tts_engine.runAndWait()
             if RECORD:
                 plt.savefig('recordings/' + str(image_count) + '.png')
