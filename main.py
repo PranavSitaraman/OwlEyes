@@ -312,7 +312,7 @@ def algorithm(frame):
             tts_engine.say(f'At {clock_time} o\'clock, {SPEEDS[speed_translate]} at {output_direction} degrees')
             tts_engine.runAndWait()
             if RECORD:
-                plt.savefig('recordings/' + str(image_count) + '.png')
+                plt.savefig('clips/' + str(image_count) + '.png')
                 image_count += 1
 
     prev_vel = [current_vel] + prev_vel[:2]
